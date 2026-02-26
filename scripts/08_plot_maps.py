@@ -50,6 +50,12 @@ DAM_LON = -44.1231
 DAM_LAT = -20.1113
 COLLAPSE_DATE = datetime(2019, 1, 25)
 
+# Approximate outline of Dam I + tailings impoundment (Córrego do Feijão Mine).
+# Derived from satellite imagery and published figures (Grebby et al. 2021).
+# Polygon closes back to first point. Coordinates are WGS84 lon/lat.
+DAM_OUTLINE_LON = [-44.132, -44.117, -44.113, -44.116, -44.126, -44.133, -44.132]
+DAM_OUTLINE_LAT = [-20.097, -20.097, -20.105, -20.120, -20.123, -20.115, -20.097]
+
 ORBIT_LABELS = {
     "desc53":  "DESC Track 53 (inc. ~32°)",
     "desc155": "DESC Track 155 (inc. ~45°)",
@@ -225,6 +231,13 @@ def plot_displacement_map(
     # Colourbar
     cbar = fig.colorbar(im, ax=ax, fraction=0.03, pad=0.03)
     cbar.set_label(cbar_label, fontsize=10)
+
+    # Dam outline — approximate polygon of Dam I + tailings impoundment
+    ax.plot(
+        DAM_OUTLINE_LON, DAM_OUTLINE_LAT,
+        color="white", linestyle="--", linewidth=1.5, zorder=6,
+        label="Dam I extent (approx.)",
+    )
 
     # Zoom to dam area if requested
     if zoom_extent is not None:
