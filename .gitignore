@@ -8,8 +8,7 @@ processing/*
 logs/*
 !logs/.gitkeep
 
-results/figures/*
-!results/figures/.gitkeep
+results/figures/.gitkeep
 
 results/data/*
 !results/data/.gitkeep
