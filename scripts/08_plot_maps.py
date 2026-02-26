@@ -23,7 +23,7 @@ Outputs:
 Usage:
     python scripts/08_plot_maps.py [--config config/project.cfg]
                                     [--vmin -50] [--vmax 50]
-                                    [--orbit {asc,desc,both}]
+                                    [--orbit {desc53,desc155,both}]
                                     [--no-decomp]
                                     [--every N]  # plot every Nth epoch
 """
@@ -50,10 +50,9 @@ DAM_LON = -44.1231
 DAM_LAT = -20.1113
 COLLAPSE_DATE = datetime(2019, 1, 25)
 
-# Both tracks are descending — "asc"/"desc" are just folder-name conventions
 ORBIT_LABELS = {
-    "asc":  "DESC Track 53 (inc. ~32°)",
-    "desc": "DESC Track 155 (inc. ~45°)",
+    "desc53":  "DESC Track 53 (inc. ~32°)",
+    "desc155": "DESC Track 155 (inc. ~45°)",
 }
 
 
@@ -64,15 +63,17 @@ def parse_args():
                         help="Colorscale minimum (mm). Auto-detected if not set.")
     parser.add_argument("--vmax",      type=float, default=None,
                         help="Colorscale maximum (mm). Auto-detected if not set.")
-    parser.add_argument("--orbit",     choices=["asc", "desc", "both"], default="both")
+    parser.add_argument("--orbit",     choices=["desc53", "desc155", "both"], default="both")
     parser.add_argument("--variant",   default=None,
                         help="Processing variant suffix (e.g. 'isbas' → reads "
-                             "processing/mintpy/asc_isbas/, saves to "
+                             "processing/mintpy/desc53_isbas/, saves to "
                              "results/figures/displacement_maps_isbas/)")
     parser.add_argument("--no-decomp", action="store_true",
                         help="Skip 2D decomposition maps even if available")
     parser.add_argument("--every",     type=int, default=1,
                         help="Plot every Nth epoch (default: 1 = all)")
+    parser.add_argument("--zoom-dam",  action="store_true",
+                        help="Crop map to a tight ~6 km window centred on the dam")
     return parser.parse_args()
 
 
@@ -160,6 +161,7 @@ def plot_displacement_map(
     vmin: float,
     vmax: float,
     cbar_label: str = "LOS displacement (mm)",
+    zoom_extent: tuple = None,   # (lon_min, lon_max, lat_min, lat_max) or None
 ):
     """
     Render a single displacement map with basemap, dam marker, and colourbar.
@@ -224,6 +226,11 @@ def plot_displacement_map(
     cbar = fig.colorbar(im, ax=ax, fraction=0.03, pad=0.03)
     cbar.set_label(cbar_label, fontsize=10)
 
+    # Zoom to dam area if requested
+    if zoom_extent is not None:
+        ax.set_xlim(zoom_extent[0], zoom_extent[1])
+        ax.set_ylim(zoom_extent[2], zoom_extent[3])
+
     # Legend
     ax.legend(loc="lower left", fontsize=9, framealpha=0.8)
 
@@ -240,6 +247,7 @@ def plot_orbit_maps(
     vmin: float,
     vmax: float,
     every: int,
+    zoom_extent: tuple = None,
 ):
     """Plot all epoch maps for one orbit direction."""
     ts_path = find_timeseries_file(mintpy_dir)
@@ -279,6 +287,7 @@ def plot_orbit_maps(
             out_path=out_path,
             vmin=_vmin,
             vmax=_vmax,
+            zoom_extent=zoom_extent,
         )
 
     logger.info("Saved %s maps to %s", ORBIT_LABELS.get(orbit, orbit.upper()), out_dir)
@@ -356,7 +365,13 @@ def main():
     maps_dir.mkdir(parents=True, exist_ok=True)
     decomp_dir_out.mkdir(parents=True, exist_ok=True)
 
-    orbits = ["asc", "desc"] if args.orbit == "both" else [args.orbit]
+    orbits = ["desc53", "desc155"] if args.orbit == "both" else [args.orbit]
+
+    # Tight zoom window: ±0.06° (~6.5 km) around dam centre
+    zoom_extent = (
+        DAM_LON - 0.06, DAM_LON + 0.06,   # lon_min, lon_max
+        DAM_LAT - 0.06, DAM_LAT + 0.06,   # lat_min, lat_max
+    ) if args.zoom_dam else None
 
     for orbit in orbits:
         dir_tag    = f"{orbit}_{variant}" if variant else orbit
@@ -368,6 +383,7 @@ def main():
             vmin=args.vmin,
             vmax=args.vmax,
             every=args.every,
+            zoom_extent=zoom_extent,
         )
 
     if not args.no_decomp and decomp_dir_in.exists():

@@ -26,7 +26,7 @@ SBAS time-series inversion on your local machine.
 
 > **Note on orbit coverage:** No ascending Sentinel-1 coverage exists over Brumadinho.
 > The Grebby et al. (2021) paper also used two descending tracks (Track 53 + Track 155).
-> The folder names `asc/` and `desc/` are pipeline conventions — **both are descending orbits**.
+> Folders and scripts use `desc53` and `desc155` to make this explicit.
 
 ---
 
@@ -38,10 +38,10 @@ EarthMovements/
 ├── config/
 │   ├── project.cfg              # Master config — paths and parameters
 │   ├── aoi.geojson              # Area of interest polygon
-│   ├── mintpy_asc.cfg           # MintPy config — Track 53 (standard SBAS)
-│   ├── mintpy_desc.cfg          # MintPy config — Track 155 (standard SBAS)
-│   ├── mintpy_asc_isbas.cfg     # MintPy config — Track 53 (ISBAS-like variant)
-│   ├── mintpy_desc_isbas.cfg    # MintPy config — Track 155 (ISBAS-like variant)
+│   ├── mintpy_desc53.cfg         # MintPy config — Track 53, inc. ~32° (standard SBAS)
+│   ├── mintpy_desc155.cfg        # MintPy config — Track 155, inc. ~45° (standard SBAS)
+│   ├── mintpy_desc53_isbas.cfg   # MintPy config — Track 53 (ISBAS-like variant)
+│   ├── mintpy_desc155_isbas.cfg  # MintPy config — Track 155 (ISBAS-like variant)
 │   └── poi.csv                  # Points of interest (auto-created on first run)
 ├── scripts/
 │   ├── 04_prep_mintpy.py        # Submit HyP3 jobs, download, load into MintPy
@@ -52,14 +52,14 @@ EarthMovements/
 │       └── geo_utils.py         # Config loading, coordinate utilities
 ├── data/
 │   └── hyp3/
-│       ├── asc/                 # HyP3 products — Track 53 (zip files + extracted)
-│       └── desc/                # HyP3 products — Track 155 (zip files + extracted)
+│       ├── desc53/              # HyP3 products — Track 53, inc. ~32° (zip + extracted)
+│       └── desc155/             # HyP3 products — Track 155, inc. ~45° (zip + extracted)
 ├── processing/
 │   └── mintpy/
-│       ├── asc/                 # MintPy working dir — Track 53, standard SBAS
-│       ├── desc/                # MintPy working dir — Track 155, standard SBAS
-│       ├── asc_isbas/           # MintPy working dir — Track 53, ISBAS-like
-│       └── desc_isbas/          # MintPy working dir — Track 155, ISBAS-like
+│       ├── desc53/              # MintPy working dir — Track 53, standard SBAS
+│       ├── desc155/             # MintPy working dir — Track 155, standard SBAS
+│       ├── desc53_isbas/        # MintPy working dir — Track 53, ISBAS-like
+│       └── desc155_isbas/       # MintPy working dir — Track 155, ISBAS-like
 ├── results/
 │   ├── figures/
 │   │   ├── displacement_maps/        # Per-epoch LOS displacement maps (standard SBAS)
@@ -121,9 +121,8 @@ Searches for Sentinel-1 SLC pairs, submits INSAR_GAMMA jobs to ASF HyP3, waits f
 completion, downloads the products (~60 GB), and loads them into MintPy's HDF5 format.
 
 ```bash
-python scripts/04_prep_mintpy.py                 # both tracks (default)
-python scripts/04_prep_mintpy.py --orbit asc     # Track 53 only
-python scripts/04_prep_mintpy.py --orbit desc    # Track 155 only
+python scripts/04_prep_mintpy.py --orbit desc53   # Track 53 only
+python scripts/04_prep_mintpy.py --orbit desc155  # Track 155 only
 ```
 
 HyP3 cloud processing takes ~30–60 min. No local SAR processing required.
@@ -132,15 +131,15 @@ HyP3 cloud processing takes ~30–60 min. No local SAR processing required.
 
 ```bash
 # Run both tracks in parallel (each takes ~1–2 h)
-python scripts/06_run_mintpy.py --orbit asc  > logs/mintpy_asc.log 2>&1 &
-python scripts/06_run_mintpy.py --orbit desc > logs/mintpy_desc.log 2>&1 &
+python scripts/06_run_mintpy.py --orbit desc53  > logs/mintpy_desc53.log 2>&1 &
+python scripts/06_run_mintpy.py --orbit desc155 > logs/mintpy_desc155.log 2>&1 &
 
 # Resume from a failed step
-python scripts/06_run_mintpy.py --orbit desc --from-step correct_troposphere
+python scripts/06_run_mintpy.py --orbit desc155 --from-step correct_troposphere
 ```
 
 ERA5 atmospheric correction is applied to Track 155 automatically (~40 GRIB files,
-cached in `processing/mintpy/desc/ERA5/`). Track 53 ERA5 is disabled due to a geometry
+cached in `processing/mintpy/desc155/ERA5/`). Track 53 ERA5 is disabled due to a geometry
 dimension mismatch in the HyP3 products for that track.
 
 ### Step 3 — Generate displacement maps
@@ -173,8 +172,8 @@ inversion with looser coherence thresholds:
 
 ```bash
 # Run ISBAS-like pipeline (results saved separately — does not overwrite standard SBAS)
-python scripts/06_run_mintpy.py --orbit asc  --variant isbas > logs/mintpy_asc_isbas.log 2>&1 &
-python scripts/06_run_mintpy.py --orbit desc --variant isbas > logs/mintpy_desc_isbas.log 2>&1 &
+python scripts/06_run_mintpy.py --orbit desc53  --variant isbas > logs/mintpy_desc53_isbas.log 2>&1 &
+python scripts/06_run_mintpy.py --orbit desc155 --variant isbas > logs/mintpy_desc155_isbas.log 2>&1 &
 
 # Plot results
 python scripts/08_plot_maps.py   --variant isbas --orbit both --every 3 --no-decomp
@@ -209,7 +208,7 @@ python scripts/09_plot_timeseries.py --variant isbas
 
 ### Reference point
 Set to stable bedrock NE of the dam (`−20.06°S, −44.08°W`) in both MintPy configs.
-This is defined in `config/mintpy_asc.cfg` and `config/mintpy_desc.cfg` under
+This is defined in `config/mintpy_desc53.cfg` and `config/mintpy_desc155.cfg` under
 `mintpy.reference.lalo`.
 
 ### Two descending tracks — no 2D decomposition

@@ -30,8 +30,8 @@ A critical finding during data exploration: **no ascending Sentinel-1 track cove
 
 | Internal label | Track | Heading | Incidence angle | Overpass (UTC) |
 |---|---|---|---|---|
-| `asc` (legacy label) | Track 53 | ~−104° | ~32° | ~08:28 |
-| `desc` | Track 155 | ~−104° | ~45° | ~08:20 |
+| `desc53` | Track 53 | ~−104° | ~32° | ~08:28 |
+| `desc155` | Track 155 | ~−104° | ~45° | ~08:20 |
 
 This matches the Grebby et al. (2021) paper, which likewise used two descending tracks. The different incidence angles provide complementary sensitivity to surface motion geometry.
 
@@ -196,8 +196,8 @@ conda env create -f environment.yml
 conda activate brumadinho_insar
 python scripts/04_prep_mintpy.py
 python scripts/06_run_mintpy.py
-python scripts/08_plot_maps.py --orbit asc
-python scripts/08_plot_maps.py --orbit desc
+python scripts/08_plot_maps.py --orbit desc53
+python scripts/08_plot_maps.py --orbit desc155
 python scripts/09_plot_timeseries.py
 ```
 

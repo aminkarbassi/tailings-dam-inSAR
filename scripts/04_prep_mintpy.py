@@ -10,8 +10,8 @@
        processing/mintpy/{orbit}/inputs/geometryGeo.h5
 
 Usage:
-    python scripts/04_prep_mintpy.py --orbit asc  [--config config/project.cfg]
-    python scripts/04_prep_mintpy.py --orbit desc
+    python scripts/04_prep_mintpy.py --orbit desc53  [--config config/project.cfg]
+    python scripts/04_prep_mintpy.py --orbit desc155
 """
 
 import argparse
@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Prepare MintPy inputs from HyP3 products")
-    parser.add_argument("--orbit",  required=True, choices=["asc", "desc"])
+    parser.add_argument("--orbit",  required=True, choices=["desc53", "desc155"])
     parser.add_argument("--config", default="config/project.cfg")
     return parser.parse_args()
 

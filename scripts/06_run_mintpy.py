@@ -24,10 +24,10 @@ Steps executed:
     geocode             → Reproject to geographic coordinates (lat/lon)
 
 Usage:
-    python scripts/06_run_mintpy.py --orbit asc  [--config config/project.cfg]
-    python scripts/06_run_mintpy.py --orbit desc
-    python scripts/06_run_mintpy.py --orbit asc  --from-step correct_troposphere
-    python scripts/06_run_mintpy.py --orbit asc  --only-step velocity
+    python scripts/06_run_mintpy.py --orbit desc53   [--config config/project.cfg]
+    python scripts/06_run_mintpy.py --orbit desc155
+    python scripts/06_run_mintpy.py --orbit desc53  --from-step correct_troposphere
+    python scripts/06_run_mintpy.py --orbit desc53  --only-step velocity
 
 Requirements:
     conda install -c conda-forge mintpy
@@ -70,11 +70,11 @@ MINTPY_STEPS = [
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Run MintPy SBAS time-series pipeline")
-    parser.add_argument("--orbit",     required=True, choices=["asc", "desc"])
+    parser.add_argument("--orbit",     required=True, choices=["desc53", "desc155"])
     parser.add_argument("--config",    default="config/project.cfg")
     parser.add_argument("--variant",   default=None,
                         help="Name suffix for config and work dir (e.g. 'isbas' → "
-                             "mintpy_asc_isbas.cfg / processing/mintpy/asc_isbas/)")
+                             "mintpy_desc53_isbas.cfg / processing/mintpy/desc53_isbas/)")
     parser.add_argument("--from-step", default=None,
                         help="Resume from this step (e.g. correct_troposphere)")
     parser.add_argument("--only-step", default=None,

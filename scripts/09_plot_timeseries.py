@@ -51,10 +51,9 @@ COLLAPSE_DATE = datetime(2019, 1, 25)
 DAM_LON = -44.1231
 DAM_LAT = -20.1113
 
-# Both tracks are descending — "asc"/"desc" are just folder-name conventions
 ORBIT_LABELS = {
-    "asc":  "DESC Track 53 (inc. ~32°)",
-    "desc": "DESC Track 155 (inc. ~45°)",
+    "desc53":  "DESC Track 53 (inc. ~32°)",
+    "desc155": "DESC Track 155 (inc. ~45°)",
 }
 
 # Default points of interest (written to poi.csv if not present)
@@ -313,8 +312,8 @@ def plot_combined_ts(
     """Plot ascending and descending on the same axes for comparison."""
     fig, ax = plt.subplots(figsize=(12, 5))
 
-    ax.scatter(asc_dts,  asc_ts,  s=20, color="steelblue",  zorder=3, label=f"LOS ({ORBIT_LABELS['asc']})")
-    ax.scatter(desc_dts, desc_ts, s=20, color="darkorange",  zorder=3, label=f"LOS ({ORBIT_LABELS['desc']})")
+    ax.scatter(asc_dts,  asc_ts,  s=20, color="steelblue",  zorder=3, label=f"LOS ({ORBIT_LABELS['desc53']})")
+    ax.scatter(desc_dts, desc_ts, s=20, color="darkorange",  zorder=3, label=f"LOS ({ORBIT_LABELS['desc155']})")
 
     ax.axvline(COLLAPSE_DATE, color="red", linewidth=2, linestyle="--",
                label="Collapse: 25 Jan 2019")
@@ -360,7 +359,7 @@ def main():
 
     # Load time-series for both orbits
     orbit_data = {}
-    for orbit in ["asc", "desc"]:
+    for orbit in ["desc53", "desc155"]:
         dir_tag    = f"{orbit}_{variant}" if variant else orbit
         mintpy_dir = processing_dir / "mintpy" / dir_tag
         ts_path    = find_timeseries_file(mintpy_dir)
@@ -428,13 +427,13 @@ def main():
                     "velocity_mmyr":   round(float(velocity), 3) if np.isfinite(velocity) else "",
                 })
 
-        # Combined ASC + DESC plot (if both available)
-        if "asc" in orbit_ts and "desc" in orbit_ts:
+        # Combined desc53 + desc155 plot (if both available)
+        if "desc53" in orbit_ts and "desc155" in orbit_ts:
             plot_combined_ts(
-                asc_dts  = orbit_data["asc"]["dts"],
-                asc_ts   = orbit_ts["asc"],
-                desc_dts = orbit_data["desc"]["dts"],
-                desc_ts  = orbit_ts["desc"],
+                asc_dts  = orbit_data["desc53"]["dts"],
+                asc_ts   = orbit_ts["desc53"],
+                desc_dts = orbit_data["desc155"]["dts"],
+                desc_ts  = orbit_ts["desc155"],
                 label    = label,
                 description = description,
                 out_path = ts_out_dir / f"ts_{label}_combined.png",

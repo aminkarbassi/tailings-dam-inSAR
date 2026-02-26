@@ -234,18 +234,18 @@ def main():
     out_dir        = results_dir / "data" / "displacement_2d"
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    asc_mintpy  = processing_dir / "mintpy" / "asc"
-    desc_mintpy = processing_dir / "mintpy" / "desc"
+    asc_mintpy  = processing_dir / "mintpy" / "desc53"
+    desc_mintpy = processing_dir / "mintpy" / "desc155"
 
     # Load time-series files
     asc_ts_path  = find_timeseries_file(asc_mintpy)
     desc_ts_path = find_timeseries_file(desc_mintpy)
 
-    logger.info("Loading ascending time-series...")
+    logger.info("Loading desc53 time-series...")
     asc_ts     = load_hdf5_dataset(asc_ts_path, "timeseries")  # shape (T, H, W)
     asc_dates  = load_hdf5_dates(asc_ts_path)
 
-    logger.info("Loading descending time-series...")
+    logger.info("Loading desc155 time-series...")
     desc_ts    = load_hdf5_dataset(desc_ts_path, "timeseries")
     desc_dates = load_hdf5_dates(desc_ts_path)
 
