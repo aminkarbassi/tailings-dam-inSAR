@@ -1,0 +1,47 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Brumadinho InSAR AOI",
+        "description": "Processing bounding box for Corrego do Feijao Mine InSAR analysis"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-44.35, -20.30],
+            [-43.95, -20.30],
+            [-43.95, -19.92],
+            [-44.35, -19.92],
+            [-44.35, -20.30]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Dam I - Corrego do Feijao",
+        "description": "Centre of the tailings dam that collapsed on 2019-01-25",
+        "collapse_date": "2019-01-25"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-44.1231, -20.1113]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Reference point (candidate)",
+        "description": "Stable bedrock NE of dam — verify coherence before use in MintPy"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-44.08, -20.06]
+      }
+    }
+  ]
+}

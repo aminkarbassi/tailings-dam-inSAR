@@ -1,0 +1,42 @@
+# ── Large data directories (contents not tracked) ───────────────────────────
+data/*
+!data/.gitkeep
+
+processing/*
+!processing/.gitkeep
+
+logs/*
+!logs/.gitkeep
+
+results/figures/*
+!results/figures/.gitkeep
+
+results/data/*
+!results/data/.gitkeep
+
+# ── Python cache ─────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+
+# ── Jupyter notebooks ─────────────────────────────────────────────────────────
+.ipynb_checkpoints/
+
+# ── IDE / editor ─────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── OS ───────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Credentials ───────────────────────────────────────────────────────────────
+.env
+*.key
+secrets.cfg
+
+# ── Pipeline state files ─────────────────────────────────────────────────────
+workspace_manifest.json
