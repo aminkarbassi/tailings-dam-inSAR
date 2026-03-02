@@ -1,5 +1,6 @@
-# Brumadinho Dam Collapse Precursor Detection via Sentinel-1 InSAR
+# Brumadinho Dam Collapse Precursor Detection via InSAR
 ## Technical Report — Methodology, Implementation & Results
+### Sentinel-1 SBAS + ALOS-2 PALSAR-2 Extension (2D Decomposition)
 
 ---
 
@@ -39,6 +40,21 @@ This matches the Grebby et al. (2021) paper, which likewise used two descending 
 **Total SAR scenes:** ~48 per track (Sentinel-1A, 12-day repeat)
 **Interferometric pairs:** ~138 per track (SBAS network, max 180-day temporal baseline, max 200 m perpendicular baseline)
 
+### ALOS-2 PALSAR-2 (Planned Extension)
+
+To overcome the fundamental limitation of having only descending geometry, the pipeline supports an **optional ALOS-2 L-band ascending pass** addition. Combining ascending ALOS-2 with descending Sentinel-1 Track 155 enables true 2D decomposition into vertical and east-west displacement components.
+
+| Property | ALOS-2 PALSAR-2 |
+|---|---|
+| Wavelength | 23.6 cm (L-band, ~4× longer than C-band) |
+| Orbit direction | Ascending |
+| Mode | FBD (Fine Beam Double, 70 km swath, ~25 m native resolution) |
+| Repeat cycle | 14 days |
+| Coherence benefit | L-band penetrates vegetation and dry soil — better coherence on tailings |
+| Preprocessor | ISCE2 `stripmapStack.py -s alos2` (local processing) |
+
+> **Data access status:** ALOS-2 Level 1.1 (SLC) data requires a JAXA Research Announcement (RA) approval. The full download and processing pipeline has been implemented (scripts 10–13) but awaits RA approval before execution. Results in §4 and §5 are therefore based on Sentinel-1 only.
+
 ---
 
 ## 3. Processing Pipeline
@@ -46,13 +62,22 @@ This matches the Grebby et al. (2021) paper, which likewise used two descending 
 ### 3.1 Architecture Overview
 
 ```
+─── Sentinel-1 (C-band, both descending) ─────────────────────────────────
 Sentinel-1 SLC → [ASF HyP3 cloud] → Geocoded interferograms (UTM)
                                            ↓
                               MintPy 1.6.2 SBAS inversion
                                            ↓
-                       LOS displacement time-series (mm)
+                LOS displacement time-series — desc53 + desc155 (mm)
+
+─── ALOS-2 PALSAR-2 (L-band, ascending) — PLANNED ────────────────────────
+ALOS-2 SLC  → [ISCE2 stripmapStack] → Interferograms (radar coords)
                                            ↓
-                        Velocity maps + POI time-series plots
+                              MintPy 1.6.2 SBAS inversion
+                                           ↓
+                     LOS displacement time-series — alos2_asc (mm)
+
+─── 2D Decomposition (when ALOS-2 data available) ─────────────────────────
+alos2_asc (ASC) + desc155 (DESC) → vertical + east-west displacement (mm)
 ```
 
 ### 3.2 Why HyP3 Instead of ISCE2
@@ -87,7 +112,42 @@ Key MintPy parameters for the standard SBAS run:
 - Track 53's `geometryGeo.h5` is 3047 rows vs `ifgramStack.h5`'s 3045 rows → ERA5 correction fails → set to `no` for that track only
 - Cached `smallbaselineApp.cfg` in the working directory overrides the project config — patched directly each run
 
-### 3.4 ISBAS-like Variant
+### 3.4 ALOS-2 ISCE2 Processing (Planned)
+
+Once JAXA RA approval is obtained, the ALOS-2 ascending pipeline executes as follows:
+
+```
+10_query_alos2.py       → Search ASF Vertex for PALSAR-2 SLC scenes (asf_search)
+11_download_alos2.py    → Download ZIP archives from ASF (~30–50 GB)
+12_prepare_isce2_alos2.py → Run stripmapStack.py to generate ISCE2 run files
+13_run_isce2_alos2.py   → Execute ISCE2 pipeline (12–48 h, checkpointed)
+06_run_mintpy.py --orbit alos2_asc → MintPy SBAS inversion
+07_decompose_2d.py      → 2D decomposition: alos2_asc + desc155 → dU, dE
+```
+
+Key ISCE2 parameters for ALOS-2 FBD mode:
+
+| Parameter | Value | Rationale |
+|---|---|---|
+| `--nofocus` | Yes | Level 1.1 is pre-focused (SLC equivalent) |
+| `azimuthLooks` | 10 | ~30 m azimuth posting at output |
+| `rangeLooks` | 4 | ~28 m range posting at output |
+| `maxTemporal` | 336 days | L-band coherent for many months |
+| `maxSpatial` | 1500 m | L-band tolerates large perpendicular baselines |
+| `unwMethod` | SNAPHU (DEFO) | Deformation-optimised unwrapping |
+
+The decomposition (`07_decompose_2d.py`) solves per-pixel:
+
+```
+[ e_E_asc   e_U_asc  ] [ dE ]   [ d_asc  ]
+[ e_E_desc  e_U_desc ] [ dU ] = [ d_desc ]
+```
+
+where e_E, e_U are the east and up components of the LOS unit vector derived from
+incidence and heading angles stored in MintPy's `geometryGeo.h5`, and dN = 0 is
+assumed (InSAR is insensitive to north-south motion for these near-polar orbits).
+
+### 3.5 ISBAS-like Variant
 
 To approximate the **Intermittent SBAS (ISBAS)** approach used by Grebby et al., we ran a second MintPy inversion with relaxed thresholds:
 
@@ -156,14 +216,15 @@ The ISBAS-like run recovers signal at the `dam_crest` point that is absent from 
 | **Max cumulative LOS** | Up to −36 mm/yr in patches; ~−18 mm avg at tailings front | −35.6 mm cumulative, −9.4 mm/yr avg |
 | **Acceleration before collapse** | Visible Nov 2018–Jan 2019 | Confirmed: −11.6 mm/month in final quarter |
 | **Dam crest signal** | Detected | Detected (ISBAS-like only) |
-| **Decomposition** | None — two LOS maps analyzed separately | None (same reason: both tracks descending) |
+| **Decomposition** | None — two LOS maps analyzed separately | None with S1 only (both tracks descending); 2D decomp supported via ALOS-2 extension |
 
 ### Key Agreement Points
 
 1. **Magnitude**: Our cumulative LOS displacement (−35.6 mm) matches the paper's reported maximum of approximately −36 mm at the tailings surface.
 2. **Acceleration**: Both find anomalous acceleration in the final 3 months before the January 25, 2019 collapse.
-3. **Track geometry**: Confirmation that only descending tracks are available — the paper made the same observation.
-4. **No decomposition**: With two tracks sharing the same heading (~−104°), the inversion into vertical + east-west components is geometrically ill-conditioned. Both studies present dual LOS maps independently.
+3. **Track geometry**: Confirmation that only descending Sentinel-1 tracks are available — the paper made the same observation.
+4. **No S1-only decomposition**: With two tracks sharing the same heading (~−104°), the inversion into vertical + east-west components is geometrically ill-conditioned. Both studies present dual LOS maps independently.
+5. **ALOS-2 path forward**: The ALOS-2 ascending extension (implemented, pending data access) will resolve point 4. Combining L-band ascending with C-band descending also provides a multi-frequency validation of the deformation signal.
 
 ### Key Differences
 
@@ -179,26 +240,41 @@ A 2025 *Matters Arising* paper in the same journal revisits the Grebby et al. re
 
 ## 6. Software Stack and Reproducibility
 
-| Component | Tool | Version |
-|---|---|---|
-| SAR interferograms | ASF HyP3 (INSAR_GAMMA product) | API v1 |
-| Time-series inversion | MintPy | 1.6.2 |
-| Atmospheric correction | PyAPS / ERA5 (CDS API) | — |
-| Coordinate transforms | pyproj | — |
-| Plotting | matplotlib | — |
-| Environment | conda (brumadinho_insar) | — |
+| Component | Tool | Version | Used for |
+|---|---|---|---|
+| S1 interferograms | ASF HyP3 (INSAR_GAMMA) | API v1 | Sentinel-1 (cloud) |
+| ALOS-2 interferograms | ISCE2 `stripmapStack.py` | 2.6+ | ALOS-2 (local, planned) |
+| Time-series inversion | MintPy | 1.6.2 | Both sensors |
+| Atmospheric correction | PyAPS / ERA5 (CDS API) | — | Both sensors |
+| ALOS-2 scene search | `asf_search` | pip | ALOS-2 catalog |
+| Coordinate transforms | pyproj | — | UTM ↔ WGS84 |
+| Plotting | matplotlib, contextily | — | Maps + time-series |
+| Environment | conda (brumadinho_insar) | — | All |
 
 All code is available at: [github.com/aminkarbassi/tailings-dam-inSAR](https://github.com/aminkarbassi/tailings-dam-inSAR)
 
-To reproduce:
+**Sentinel-1 SBAS (fully reproducible now):**
 ```bash
 conda env create -f environment.yml
 conda activate brumadinho_insar
-python scripts/04_prep_mintpy.py
-python scripts/06_run_mintpy.py
-python scripts/08_plot_maps.py --orbit desc53
-python scripts/08_plot_maps.py --orbit desc155
+python scripts/04_prep_mintpy.py --orbit desc53
+python scripts/04_prep_mintpy.py --orbit desc155
+python scripts/06_run_mintpy.py --orbit desc53
+python scripts/06_run_mintpy.py --orbit desc155
+python scripts/08_plot_maps.py --orbit both --every 3 --no-decomp
 python scripts/09_plot_timeseries.py
+```
+
+**ALOS-2 extension (requires JAXA RA approval + ISCE2 installation):**
+```bash
+pip install asf-search
+python scripts/10_query_alos2.py --flight-dir ASCENDING
+# [obtain JAXA RA approval, update config/project.cfg → asc_relative_orbit]
+python scripts/11_download_alos2.py --flight-dir ASCENDING
+python scripts/12_prepare_isce2_alos2.py
+python scripts/13_run_isce2_alos2.py
+python scripts/06_run_mintpy.py --orbit alos2_asc
+python scripts/07_decompose_2d.py  # → vertical + E-W GeoTIFFs
 ```
 
 ---
@@ -212,3 +288,13 @@ This project demonstrates that **pre-collapse deformation at the Brumadinho dam 
 - Signal concentrated at the upper tailings surface and dam crest, not at the stable reference site
 
 These findings independently confirm the Grebby et al. (2021) results and support the case for routine satellite radar monitoring of tailings storage facilities as a low-cost, globally scalable early-warning mechanism.
+
+### Planned Extension — ALOS-2 2D Decomposition
+
+The current analysis is limited to LOS observations along two descending Sentinel-1 tracks. Both tracks share a near-identical heading (~−104°), making 2D decomposition into vertical and east-west displacement geometrically underdetermined with Sentinel-1 data alone.
+
+The implemented ALOS-2 pipeline (scripts 10–13) will, once data access is obtained:
+
+1. **Resolve the deformation geometry**: ascending ALOS-2 + descending S1 Track 155 span ~118° in azimuth — sufficient for a well-conditioned 2D inversion.
+2. **Provide L-band validation**: 23.6 cm wavelength is more robust over the partially vegetated tailings margins and is insensitive to ionospheric scintillation at mid-latitudes.
+3. **Test multi-frequency consistency**: agreement between C-band and L-band LOS time-series would strengthen confidence in the precursory signal and its interpretation as dam-body deformation rather than atmospheric artefact.
