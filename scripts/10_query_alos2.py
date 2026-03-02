@@ -130,7 +130,7 @@ def search_alos2(
         )
 
         kwargs = dict(
-            platform=[asf.PLATFORM.ALOS2],
+            dataset=[asf.DATASET.ALOS_2],
             processingLevel=[asf.PRODUCT_TYPE.L1_1],   # SLC equivalent
             intersectsWith=wkt,
             start=start_date,

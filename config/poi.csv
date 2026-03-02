@@ -1,0 +1,5 @@
+label,lat,lon,description
+dam_crest,-20.1113,-44.1231,Dam I crest centre (approx.)
+tailings_upper,-20.115,-44.12,Upper tailings surface
+tailings_lower,-20.12,-44.117,Lower tailings body
+stable_ref,-20.06,-44.08,Stable bedrock reference point

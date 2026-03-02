@@ -50,12 +50,13 @@ DAM_LON = -44.1231
 DAM_LAT = -20.1113
 COLLAPSE_DATE = datetime(2019, 1, 25)
 
-# Outline of Dam I + tailings impoundment (Córrego do Feijão Mine).
-# Digitised from the teal polygon in the published site map (Grebby et al. 2021 Fig. 1).
-# UTM Zone 23S ticks in the source image: 581050 – 582050 (1 km span).
-# Polygon closes back to first point. Coordinates are WGS84 lon/lat.
-DAM_OUTLINE_LON = [-44.128, -44.121, -44.114, -44.113, -44.116, -44.122, -44.129, -44.131, -44.128]
-DAM_OUTLINE_LAT = [-20.101, -20.098, -20.101, -20.108, -20.118, -20.121, -20.118, -20.110, -20.101]
+# Outline of Dam I (Córrego do Feijão Mine) — the embankment that failed on 25 Jan 2019.
+# Digitised from the YELLOW polygon in Grebby et al. 2021 Fig. 1 (NOT the teal polygon,
+# which outlines the broader tailings storage facility).
+# Crest centre: -20.1113°S, -44.1231°W.  Coordinates WGS84 lon/lat.
+# Polygon closes back to first point.
+DAM_OUTLINE_LON = [-44.127, -44.120, -44.115, -44.113, -44.115, -44.120, -44.126, -44.127]
+DAM_OUTLINE_LAT = [-20.106, -20.103, -20.105, -20.110, -20.116, -20.118, -20.115, -20.106]
 
 # Zoom window: polygon extent + 40% buffer, keeps dam + immediate surroundings
 _PAD_LON = 0.010   # ~1 km padding east/west

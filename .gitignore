@@ -39,3 +39,4 @@ secrets.cfg
 
 # ── Pipeline state files ─────────────────────────────────────────────────────
 workspace_manifest.json
+.claude/
