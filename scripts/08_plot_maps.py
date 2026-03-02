@@ -50,11 +50,22 @@ DAM_LON = -44.1231
 DAM_LAT = -20.1113
 COLLAPSE_DATE = datetime(2019, 1, 25)
 
-# Approximate outline of Dam I + tailings impoundment (Córrego do Feijão Mine).
-# Derived from satellite imagery and published figures (Grebby et al. 2021).
+# Outline of Dam I + tailings impoundment (Córrego do Feijão Mine).
+# Digitised from the teal polygon in the published site map (Grebby et al. 2021 Fig. 1).
+# UTM Zone 23S ticks in the source image: 581050 – 582050 (1 km span).
 # Polygon closes back to first point. Coordinates are WGS84 lon/lat.
-DAM_OUTLINE_LON = [-44.132, -44.117, -44.113, -44.116, -44.126, -44.133, -44.132]
-DAM_OUTLINE_LAT = [-20.097, -20.097, -20.105, -20.120, -20.123, -20.115, -20.097]
+DAM_OUTLINE_LON = [-44.128, -44.121, -44.114, -44.113, -44.116, -44.122, -44.129, -44.131, -44.128]
+DAM_OUTLINE_LAT = [-20.101, -20.098, -20.101, -20.108, -20.118, -20.121, -20.118, -20.110, -20.101]
+
+# Zoom window: polygon extent + 40% buffer, keeps dam + immediate surroundings
+_PAD_LON = 0.010   # ~1 km padding east/west
+_PAD_LAT = 0.008   # ~0.9 km padding north/south
+DAM_ZOOM = (
+    min(DAM_OUTLINE_LON) - _PAD_LON,   # lon_min
+    max(DAM_OUTLINE_LON) + _PAD_LON,   # lon_max
+    min(DAM_OUTLINE_LAT) - _PAD_LAT,   # lat_min
+    max(DAM_OUTLINE_LAT) + _PAD_LAT,   # lat_max
+)
 
 ORBIT_LABELS = {
     "desc53":  "DESC Track 53 (inc. ~32°)",
@@ -78,8 +89,8 @@ def parse_args():
                         help="Skip 2D decomposition maps even if available")
     parser.add_argument("--every",     type=int, default=1,
                         help="Plot every Nth epoch (default: 1 = all)")
-    parser.add_argument("--zoom-dam",  action="store_true",
-                        help="Crop map to a tight ~6 km window centred on the dam")
+    parser.add_argument("--full-extent", action="store_true",
+                        help="Show full MintPy extent instead of zooming to dam area")
     return parser.parse_args()
 
 
@@ -380,11 +391,8 @@ def main():
 
     orbits = ["desc53", "desc155"] if args.orbit == "both" else [args.orbit]
 
-    # Tight zoom window: ±0.06° (~6.5 km) around dam centre
-    zoom_extent = (
-        DAM_LON - 0.06, DAM_LON + 0.06,   # lon_min, lon_max
-        DAM_LAT - 0.06, DAM_LAT + 0.06,   # lat_min, lat_max
-    ) if args.zoom_dam else None
+    # Default: zoom to dam outline + padding. Use --full-extent to show everything.
+    zoom_extent = None if args.full_extent else DAM_ZOOM
 
     for orbit in orbits:
         dir_tag    = f"{orbit}_{variant}" if variant else orbit
