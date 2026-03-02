@@ -24,8 +24,9 @@ Steps executed:
     geocode             → Reproject to geographic coordinates (lat/lon)
 
 Usage:
-    python scripts/06_run_mintpy.py --orbit desc53   [--config config/project.cfg]
+    python scripts/06_run_mintpy.py --orbit desc53     [--config config/project.cfg]
     python scripts/06_run_mintpy.py --orbit desc155
+    python scripts/06_run_mintpy.py --orbit alos2_asc  # ALOS-2 L-band ascending (ISCE2 inputs)
     python scripts/06_run_mintpy.py --orbit desc53  --from-step correct_troposphere
     python scripts/06_run_mintpy.py --orbit desc53  --only-step velocity
 
@@ -70,7 +71,12 @@ MINTPY_STEPS = [
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Run MintPy SBAS time-series pipeline")
-    parser.add_argument("--orbit",     required=True, choices=["desc53", "desc155"])
+    parser.add_argument(
+        "--orbit",
+        required=True,
+        choices=["desc53", "desc155", "alos2_asc"],
+        help="Orbit key: desc53 / desc155 (Sentinel-1 via HyP3) or alos2_asc (ALOS-2 via ISCE2)",
+    )
     parser.add_argument("--config",    default="config/project.cfg")
     parser.add_argument("--variant",   default=None,
                         help="Name suffix for config and work dir (e.g. 'isbas' → "

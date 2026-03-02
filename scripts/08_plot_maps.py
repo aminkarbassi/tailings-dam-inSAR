@@ -68,8 +68,9 @@ DAM_ZOOM = (
 )
 
 ORBIT_LABELS = {
-    "desc53":  "DESC Track 53 (inc. ~32°)",
-    "desc155": "DESC Track 155 (inc. ~45°)",
+    "desc53":   "DESC Track 53 (inc. ~32°)",
+    "desc155":  "DESC Track 155 (inc. ~45°)",
+    "alos2_asc": "ALOS-2 L-band ASC (inc. ~30–36°)",
 }
 
 
@@ -80,7 +81,13 @@ def parse_args():
                         help="Colorscale minimum (mm). Auto-detected if not set.")
     parser.add_argument("--vmax",      type=float, default=None,
                         help="Colorscale maximum (mm). Auto-detected if not set.")
-    parser.add_argument("--orbit",     choices=["desc53", "desc155", "both"], default="both")
+    parser.add_argument(
+        "--orbit",
+        choices=["desc53", "desc155", "alos2_asc", "both"],
+        default="both",
+        help="Orbit to plot. 'both' covers desc53 + desc155 (not alos2_asc). "
+             "Use --orbit alos2_asc explicitly for ALOS-2 maps.",
+    )
     parser.add_argument("--variant",   default=None,
                         help="Processing variant suffix (e.g. 'isbas' → reads "
                              "processing/mintpy/desc53_isbas/, saves to "
@@ -389,6 +396,7 @@ def main():
     maps_dir.mkdir(parents=True, exist_ok=True)
     decomp_dir_out.mkdir(parents=True, exist_ok=True)
 
+    # 'both' means the two Sentinel-1 descending tracks (alos2_asc is opt-in only)
     orbits = ["desc53", "desc155"] if args.orbit == "both" else [args.orbit]
 
     # Default: zoom to dam outline + padding. Use --full-extent to show everything.

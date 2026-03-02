@@ -10,9 +10,10 @@ the dam's catastrophic collapse on **25 January 2019**.
 |---|---|
 | **Study period** | July 2017 – January 25, 2019 |
 | **Dam coordinates** | 20.1113°S, 44.1231°W |
-| **SAR data** | Sentinel-1 IW, two descending tracks |
-| **Tracks** | Track 53 (inc. ~32°) + Track 155 (inc. ~45°) |
-| **Method** | SBAS time-series via ASF HyP3 + MintPy 1.6.2 |
+| **SAR data** | Sentinel-1 IW (two descending tracks) + ALOS-2 PALSAR-2 ascending (optional) |
+| **S1 Tracks** | Track 53 (inc. ~32°) + Track 155 (inc. ~45°) |
+| **ALOS-2** | L-band ascending — enables 2D decomposition (vertical + E-W) |
+| **Method** | SBAS time-series via ASF HyP3 + MintPy 1.6.2 (S1); ISCE2 stripmapStack + MintPy (ALOS-2) |
 | **Key result** | ~−9 mm/yr LOS on tailings; −35 mm cumulative by Jan 2019 |
 
 ---
@@ -36,39 +37,56 @@ SBAS time-series inversion on your local machine.
 EarthMovements/
 ├── environment.yml              # Conda environment (brumadinho_insar)
 ├── config/
-│   ├── project.cfg              # Master config — paths and parameters
+│   ├── project.cfg              # Master config — paths, AOI, ALOS-2 parameters
 │   ├── aoi.geojson              # Area of interest polygon
-│   ├── mintpy_desc53.cfg         # MintPy config — Track 53, inc. ~32° (standard SBAS)
-│   ├── mintpy_desc155.cfg        # MintPy config — Track 155, inc. ~45° (standard SBAS)
+│   ├── mintpy_desc53.cfg         # MintPy config — S1 Track 53 (standard SBAS)
+│   ├── mintpy_desc155.cfg        # MintPy config — S1 Track 155 (standard SBAS)
 │   ├── mintpy_desc53_isbas.cfg   # MintPy config — Track 53 (ISBAS-like variant)
 │   ├── mintpy_desc155_isbas.cfg  # MintPy config — Track 155 (ISBAS-like variant)
+│   ├── mintpy_alos2_asc.cfg      # MintPy config — ALOS-2 ascending (ISCE2 inputs)
 │   └── poi.csv                  # Points of interest (auto-created on first run)
 ├── scripts/
-│   ├── 04_prep_mintpy.py        # Submit HyP3 jobs, download, load into MintPy
-│   ├── 06_run_mintpy.py         # Run MintPy SBAS pipeline (--variant isbas supported)
+│   ├── 04_prep_mintpy.py        # Submit HyP3 jobs, download, load into MintPy (S1)
+│   ├── 06_run_mintpy.py         # Run MintPy SBAS pipeline (S1 + ALOS-2)
+│   ├── 07_decompose_2d.py       # 2D decomposition: ALOS-2 ASC + S1 DESC → vertical + E-W
 │   ├── 08_plot_maps.py          # Cumulative displacement maps per epoch
 │   ├── 09_plot_timeseries.py    # Time-series plots at points of interest
+│   ├── 10_query_alos2.py        # Search ASF Vertex for ALOS-2 PALSAR-2 scenes
+│   ├── 11_download_alos2.py     # Download ALOS-2 SLC data from ASF
+│   ├── 12_prepare_isce2_alos2.py # Set up ISCE2 stripmapStack for ALOS-2
+│   ├── 13_run_isce2_alos2.py    # Execute ISCE2 ALOS-2 processing pipeline
 │   └── utils/
-│       └── geo_utils.py         # Config loading, coordinate utilities
+│       ├── geo_utils.py         # Config loading, coordinate utilities
+│       └── isce2_utils.py       # ISCE2 run-file helpers (shared by S1 + ALOS-2)
 ├── data/
-│   └── hyp3/
-│       ├── desc53/              # HyP3 products — Track 53, inc. ~32° (zip + extracted)
-│       └── desc155/             # HyP3 products — Track 155, inc. ~45° (zip + extracted)
+│   ├── hyp3/
+│   │   ├── desc53/              # HyP3 products — S1 Track 53 (zip + extracted)
+│   │   └── desc155/             # HyP3 products — S1 Track 155 (zip + extracted)
+│   ├── raw/
+│   │   └── alos2/asc/           # ALOS-2 SLC scene directories (LED-* + IMG-* files)
+│   ├── dem/glo30/               # GLO-30 DEM tiles + merged dem.wgs84 (for ISCE2)
+│   └── catalogs/
+│       └── alos2_scenes.json    # ALOS-2 scene catalog from 10_query_alos2.py
 ├── processing/
+│   ├── isce2/
+│   │   └── alos2_asc/           # ISCE2 working dir — run_files/, configs/, merged/
 │   └── mintpy/
-│       ├── desc53/              # MintPy working dir — Track 53, standard SBAS
-│       ├── desc155/             # MintPy working dir — Track 155, standard SBAS
+│       ├── desc53/              # MintPy working dir — S1 Track 53, standard SBAS
+│       ├── desc155/             # MintPy working dir — S1 Track 155, standard SBAS
 │       ├── desc53_isbas/        # MintPy working dir — Track 53, ISBAS-like
-│       └── desc155_isbas/       # MintPy working dir — Track 155, ISBAS-like
+│       ├── desc155_isbas/       # MintPy working dir — Track 155, ISBAS-like
+│       └── alos2_asc/           # MintPy working dir — ALOS-2 ascending
 ├── results/
 │   ├── figures/
 │   │   ├── displacement_maps/        # Per-epoch LOS displacement maps (standard SBAS)
 │   │   ├── displacement_maps_isbas/  # Per-epoch maps (ISBAS-like variant)
+│   │   ├── decomposition/            # 2D decomposed vertical + E-W maps (if ALOS-2 run)
 │   │   ├── timeseries/               # Time-series plots at POIs (standard SBAS)
 │   │   └── timeseries_isbas/         # Time-series plots (ISBAS-like variant)
 │   └── data/
 │       ├── timeseries_points.csv     # Tabular displacement at POIs (standard SBAS)
-│       └── timeseries_points_isbas.csv
+│       ├── timeseries_points_isbas.csv
+│       └── displacement_2d/          # Per-epoch vertical + E-W GeoTIFFs (if ALOS-2 run)
 └── logs/                        # Processing logs
 ```
 
@@ -191,6 +209,81 @@ python scripts/09_plot_timeseries.py --variant isbas
 
 ---
 
+## ALOS-2 PALSAR-2 Extension (Optional)
+
+Adding ALOS-2 ascending data enables **2D displacement decomposition** (vertical + east-west),
+since Sentinel-1 has no ascending coverage over Brumadinho.
+ALOS-2 L-band (23.6 cm) also offers better coherence on soil and tailings than C-band.
+
+> **Data access:** ALOS-2 Level 1.1 (SLC) products require a [JAXA Research Announcement](https://www.eorc.jaxa.jp/ALOS/en/alos-2/a2_proposal.htm)
+> approval in addition to a NASA Earthdata account. Searching the catalog is free.
+
+### Step 1 — Find available ALOS-2 scenes
+
+```bash
+pip install asf-search   # one-time
+python scripts/10_query_alos2.py --flight-dir ASCENDING
+```
+
+Review the output table. Note the ascending track number with the most scenes.
+Update `config/project.cfg` → `[alos2] asc_relative_orbit = <track>`.
+
+### Step 2 — Download ALOS-2 data
+
+```bash
+python scripts/11_download_alos2.py --flight-dir ASCENDING --track <track>
+```
+
+Each scene downloads as a ZIP archive and is automatically extracted.
+Data lands in `data/raw/alos2/asc/`.
+
+### Step 3 — Process with ISCE2 stripmapStack
+
+ISCE2 must be installed with `stripmapStack.py` on the PATH, and the GLO-30 DEM
+must be available in ISCE2 format (run `scripts/03_download_dem.py` if not).
+
+```bash
+# Set up ISCE2 network and run files:
+python scripts/12_prepare_isce2_alos2.py
+
+# Execute the full pipeline (~12–48 h depending on scene count and hardware):
+python scripts/13_run_isce2_alos2.py
+```
+
+Resume after interruption with `--from-step <run_XX_name>`.
+
+### Step 4 — Run MintPy on ALOS-2 interferograms
+
+```bash
+python scripts/06_run_mintpy.py --orbit alos2_asc > logs/mintpy_alos2_asc.log 2>&1
+```
+
+ERA5 atmospheric correction is applied automatically (same as S1 Track 155).
+
+### Step 5 — 2D Decomposition
+
+```bash
+# ALOS-2 ascending + S1 Track 155 descending → vertical + E-W displacement:
+python scripts/07_decompose_2d.py
+
+# Plot decomposed maps:
+python scripts/08_plot_maps.py --orbit alos2_asc --every 3   # ALOS-2 LOS maps
+python scripts/08_plot_maps.py --no-decomp False             # shows 2D decomp maps too
+```
+
+### ALOS-2 vs Sentinel-1 key parameters
+
+| Parameter | Sentinel-1 (C-band) | ALOS-2 PALSAR-2 (L-band) |
+|---|---|---|
+| Wavelength | 5.6 cm | 23.6 cm |
+| Repeat cycle | 6–12 days (S1A+B) | 14 days |
+| Coherence on tailings | Moderate | Higher |
+| Max temp baseline | 180 days | 336 days (24 cycles) |
+| Max perp baseline | 200 m | 1500 m |
+| Preprocessor | ASF HyP3 (cloud) | ISCE2 stripmapStack (local) |
+
+---
+
 ## Storage Requirements
 
 | Component | Size (approx.) |
@@ -199,8 +292,12 @@ python scripts/09_plot_timeseries.py --variant isbas
 | HyP3 products — Track 155 (zip + extracted) | ~35 GB |
 | MintPy working dirs (standard SBAS, both tracks) | ~10 GB |
 | MintPy working dirs (ISBAS-like, both tracks) | ~10 GB |
+| ALOS-2 SLC data (ascending, ~18 months) | ~30–50 GB |
+| ISCE2 ALOS-2 working dir | ~20 GB |
+| MintPy ALOS-2 working dir | ~5 GB |
 | Final results (figures + CSV) | < 1 GB |
-| **Total** | **~80–90 GB** |
+| **Total (S1 only)** | **~80–90 GB** |
+| **Total (S1 + ALOS-2)** | **~150–170 GB** |
 
 ---
 
@@ -211,11 +308,14 @@ Set to stable bedrock NE of the dam (`−20.06°S, −44.08°W`) in both MintPy 
 This is defined in `config/mintpy_desc53.cfg` and `config/mintpy_desc155.cfg` under
 `mintpy.reference.lalo`.
 
-### Two descending tracks — no 2D decomposition
+### Two descending Sentinel-1 tracks
 Both Track 53 and Track 155 are descending with the same satellite heading (~−104°).
-2D decomposition into vertical + east-west requires ascending + descending geometry
-and is **not** applicable here. The two LOS time-series are analysed independently,
-consistent with Grebby et al. (2021).
+With S1 data alone, 2D decomposition into vertical + east-west is **not** applicable;
+the two LOS time-series are analysed independently, consistent with Grebby et al. (2021).
+
+2D decomposition becomes possible with the **optional ALOS-2 extension** (see above),
+which provides an ascending geometry. See `config/mintpy_alos2_asc.cfg` and
+`scripts/07_decompose_2d.py`.
 
 ### Orbit data gap
 Track 53 has a gap in the Sentinel-1 archive around December 2017 – January 2018.

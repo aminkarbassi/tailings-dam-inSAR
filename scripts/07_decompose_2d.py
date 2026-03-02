@@ -17,20 +17,36 @@ Method:
 
     Setting dN = 0 yields a 2×2 system solved per pixel per epoch.
 
+Orbit geometry:
+    The decomposition requires one ASCENDING and one DESCENDING pass.
+    For Brumadinho, Sentinel-1 has no ascending coverage.
+    Therefore this script requires ALOS-2 ascending (processed via ISCE2).
+
+    Default pair:
+        asc  → alos2_asc  : ALOS-2 PALSAR-2 ascending, processed with ISCE2
+        desc → desc155    : Sentinel-1 descending Track 155 (ERA5-corrected, primary)
+
+    The two geocoded grids MUST share the same laloStep (0.0001°) — this is
+    enforced by the MintPy configs (mintpy.geocode.laloStep = -0.0001,0.0001).
+
 Inputs:
-    processing/mintpy/asc/geo/geo_timeseries_ramp_demErr.h5
-    processing/mintpy/desc/geo/geo_timeseries_ramp_demErr.h5
-    processing/mintpy/asc/inputs/geometryGeo.h5  (incidence + heading angles)
-    processing/mintpy/desc/inputs/geometryGeo.h5
+    processing/mintpy/alos2_asc/geo/geo_timeseries_ramp_demErr.h5  (ALOS-2 ascending)
+    processing/mintpy/desc155/geo/geo_timeseries_ramp_demErr.h5    (S1 descending)
+    processing/mintpy/alos2_asc/inputs/geometryGeo.h5  (incidence + heading angles)
+    processing/mintpy/desc155/inputs/geometryGeo.h5
 
 Outputs:
-    results/data/displacement_2d/vertical_YYYYMMDD.tif   — per epoch
+    results/data/displacement_2d/vertical_YYYYMMDD.tif      — per epoch
     results/data/displacement_2d/ew_horizontal_YYYYMMDD.tif — per epoch
-    results/data/displacement_2d/vertical_velocity.tif   — mean velocity
-    results/data/displacement_2d/ew_velocity.tif
+    results/data/displacement_2d/vertical_velocity_mmyr.tif — mean velocity
+    results/data/displacement_2d/ew_velocity_mmyr.tif
 
 Usage:
-    python scripts/07_decompose_2d.py [--config config/project.cfg]
+    # Default: ALOS-2 ascending + S1 Track 155 descending
+    python scripts/07_decompose_2d.py
+
+    # Override orbit pair:
+    python scripts/07_decompose_2d.py --asc-orbit alos2_asc --desc-orbit desc155
 """
 
 import argparse
@@ -51,7 +67,18 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description="Decompose LOS time-series into vertical and E-W components"
     )
-    parser.add_argument("--config", default="config/project.cfg")
+    parser.add_argument("--config",     default="config/project.cfg")
+    parser.add_argument(
+        "--asc-orbit",
+        default="alos2_asc",
+        help="MintPy orbit key for the ASCENDING pass (default: alos2_asc)",
+    )
+    parser.add_argument(
+        "--desc-orbit",
+        default="desc155",
+        choices=["desc53", "desc155"],
+        help="MintPy orbit key for the DESCENDING pass (default: desc155 — ERA5-corrected)",
+    )
     return parser.parse_args()
 
 
@@ -234,18 +261,36 @@ def main():
     out_dir        = results_dir / "data" / "displacement_2d"
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    asc_mintpy  = processing_dir / "mintpy" / "desc53"
-    desc_mintpy = processing_dir / "mintpy" / "desc155"
+    asc_orbit  = args.asc_orbit
+    desc_orbit = args.desc_orbit
+
+    asc_mintpy  = processing_dir / "mintpy" / asc_orbit
+    desc_mintpy = processing_dir / "mintpy" / desc_orbit
+
+    logger.info("2D decomposition pair:")
+    logger.info("  ASC  : %s → %s", asc_orbit,  asc_mintpy)
+    logger.info("  DESC : %s → %s", desc_orbit, desc_mintpy)
+
+    if not asc_mintpy.exists():
+        logger.error(
+            "Ascending MintPy directory not found: %s\n"
+            "Run the ALOS-2 pipeline first:\n"
+            "  scripts/10_query_alos2.py → 11_download_alos2.py → "
+            "12_prepare_isce2_alos2.py → 13_run_isce2_alos2.py → "
+            "06_run_mintpy.py --orbit %s",
+            asc_mintpy, asc_orbit,
+        )
+        sys.exit(1)
 
     # Load time-series files
     asc_ts_path  = find_timeseries_file(asc_mintpy)
     desc_ts_path = find_timeseries_file(desc_mintpy)
 
-    logger.info("Loading desc53 time-series...")
+    logger.info("Loading %s time-series ...", asc_orbit)
     asc_ts     = load_hdf5_dataset(asc_ts_path, "timeseries")  # shape (T, H, W)
     asc_dates  = load_hdf5_dates(asc_ts_path)
 
-    logger.info("Loading desc155 time-series...")
+    logger.info("Loading %s time-series ...", desc_orbit)
     desc_ts    = load_hdf5_dataset(desc_ts_path, "timeseries")
     desc_dates = load_hdf5_dates(desc_ts_path)
 

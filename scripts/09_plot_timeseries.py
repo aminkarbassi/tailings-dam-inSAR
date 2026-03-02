@@ -52,8 +52,16 @@ DAM_LON = -44.1231
 DAM_LAT = -20.1113
 
 ORBIT_LABELS = {
-    "desc53":  "DESC Track 53 (inc. ~32°)",
-    "desc155": "DESC Track 155 (inc. ~45°)",
+    "desc53":    "DESC Track 53 (inc. ~32°)",
+    "desc155":   "DESC Track 155 (inc. ~45°)",
+    "alos2_asc": "ALOS-2 L-band ASC (inc. ~30–36°)",
+}
+
+# Colour for each orbit in combined plots
+ORBIT_COLORS = {
+    "desc53":    "steelblue",
+    "desc155":   "darkorange",
+    "alos2_asc": "forestgreen",
 }
 
 # Default points of interest (written to poi.csv if not present)
@@ -245,7 +253,7 @@ def plot_single_orbit_ts(
     fig, ax = plt.subplots(figsize=(12, 5))
 
     # Scatter plot of raw time-series
-    ax.scatter(dts, ts_mm, s=20, color="steelblue", zorder=3,
+    ax.scatter(dts, ts_mm, s=20, color=ORBIT_COLORS.get(orbit, "steelblue"), zorder=3,
                label=f"LOS displacement ({ORBIT_LABELS.get(orbit, orbit.upper())})")
 
     # Linear trend
@@ -301,29 +309,33 @@ def plot_single_orbit_ts(
 
 
 def plot_combined_ts(
-    asc_dts:  list,
-    asc_ts:   np.ndarray,
-    desc_dts: list,
-    desc_ts:  np.ndarray,
+    orbit_dts:  dict,
+    orbit_ts:   dict,
     label: str,
     description: str,
     out_path: Path,
 ):
-    """Plot ascending and descending on the same axes for comparison."""
+    """Plot all available orbits on the same axes for comparison."""
     fig, ax = plt.subplots(figsize=(12, 5))
 
-    ax.scatter(asc_dts,  asc_ts,  s=20, color="steelblue",  zorder=3, label=f"LOS ({ORBIT_LABELS['desc53']})")
-    ax.scatter(desc_dts, desc_ts, s=20, color="darkorange",  zorder=3, label=f"LOS ({ORBIT_LABELS['desc155']})")
+    for orbit, ts in orbit_ts.items():
+        dts   = orbit_dts[orbit]
+        color = ORBIT_COLORS.get(orbit, "gray")
+        ax.scatter(
+            dts, ts, s=20, color=color, zorder=3,
+            label=f"LOS ({ORBIT_LABELS.get(orbit, orbit.upper())})",
+        )
 
     ax.axvline(COLLAPSE_DATE, color="red", linewidth=2, linestyle="--",
                label="Collapse: 25 Jan 2019")
     ax.axvspan(datetime(2018, 10, 25), COLLAPSE_DATE, alpha=0.08, color="red")
     ax.axhline(0, color="gray", linewidth=0.8, linestyle=":")
 
+    orbits_str = " + ".join(orbit_ts.keys())
     ax.set_xlabel("Date", fontsize=11)
     ax.set_ylabel("Cumulative LOS displacement (mm)", fontsize=11)
     ax.set_title(
-        f"Brumadinho Dam I — {description}\nTrack 53 + Track 155 LOS displacement comparison",
+        f"Brumadinho Dam I — {description}\n{orbits_str} LOS displacement comparison",
         fontsize=12,
     )
     ax.legend(fontsize=9, loc="best")
@@ -357,9 +369,9 @@ def main():
     pois = load_poi(poi_path)
     logger.info("Loaded %d points of interest from %s", len(pois), poi_path)
 
-    # Load time-series for both orbits
+    # Load time-series for all available orbits (Sentinel-1 + ALOS-2 if processed)
     orbit_data = {}
-    for orbit in ["desc53", "desc155"]:
+    for orbit in ["desc53", "desc155", "alos2_asc"]:
         dir_tag    = f"{orbit}_{variant}" if variant else orbit
         mintpy_dir = processing_dir / "mintpy" / dir_tag
         ts_path    = find_timeseries_file(mintpy_dir)
@@ -427,16 +439,14 @@ def main():
                     "velocity_mmyr":   round(float(velocity), 3) if np.isfinite(velocity) else "",
                 })
 
-        # Combined desc53 + desc155 plot (if both available)
-        if "desc53" in orbit_ts and "desc155" in orbit_ts:
+        # Combined plot — all available orbits (at least two required)
+        if len(orbit_ts) >= 2:
             plot_combined_ts(
-                asc_dts  = orbit_data["desc53"]["dts"],
-                asc_ts   = orbit_ts["desc53"],
-                desc_dts = orbit_data["desc155"]["dts"],
-                desc_ts  = orbit_ts["desc155"],
-                label    = label,
+                orbit_dts   = {o: orbit_data[o]["dts"] for o in orbit_ts},
+                orbit_ts    = orbit_ts,
+                label       = label,
                 description = description,
-                out_path = ts_out_dir / f"ts_{label}_combined.png",
+                out_path    = ts_out_dir / f"ts_{label}_combined.png",
             )
 
     # Write CSV
